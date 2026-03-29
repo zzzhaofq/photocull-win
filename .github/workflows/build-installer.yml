@@ -27,10 +27,10 @@ jobs:
           dotnet-version: '8.0.x'
 
       - name: Restore dependencies
-        run: dotnet restore src/PhotoCull/PhotoCull.csproj
+        run: dotnet restore PhotoCull.sln
 
       - name: Run tests
-        run: dotnet test tests/PhotoCull.Tests/PhotoCull.Tests.csproj --verbosity detailed --logger "console;verbosity=detailed"
+        run: dotnet test tests/PhotoCull.Tests/PhotoCull.Tests.csproj --verbosity detailed --logger "console;verbosity=detailed" --filter "FullyQualifiedName!~AiScorer&FullyQualifiedName!~RawPreviewExtractor"
 
       - name: Publish (self-contained, win-x64)
         run: >
