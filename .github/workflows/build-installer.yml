@@ -45,22 +45,6 @@ jobs:
           -p:PublishSingleFile=false
           -o src/PhotoCull/bin/Release/net8.0-windows/win-x64/publish
 
-      - name: Verify libraw.dll in publish output
-        shell: pwsh
-        run: |
-          $dll = "src/PhotoCull/bin/Release/net8.0-windows/win-x64/publish/libs/libraw.dll"
-          if (Test-Path $dll) {
-            Write-Host "libraw.dll found at $dll"
-          } else {
-            Write-Host "libraw.dll not found at expected path, searching..."
-            $found = Get-ChildItem -Path "src/PhotoCull/bin/Release/net8.0-windows/win-x64/publish" -Filter "libraw.dll" -Recurse
-            if ($found) {
-              Write-Host "Found at: $($found.FullName)"
-            } else {
-              Write-Warning "libraw.dll not found in publish output. It should be included via the project's CopyToOutputDirectory setting."
-            }
-          }
-
       - name: Install Inno Setup
         run: choco install innosetup --yes --no-progress
 

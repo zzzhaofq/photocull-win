@@ -110,18 +110,34 @@ public partial class ImportViewModel : ObservableObject
 
         if (IsCancelled) { await CleanupSession(db, session); return; }
 
-        // AI scoring
-        for (int i = 0; i < photos.Count; i++)
-        {
-            if (IsCancelled) { await CleanupSession(db, session); return; }
+        // AI scoring (parallel, matching Mac version's concurrent queue)
+        var aiConcurrency = Math.Max(4, Environment.ProcessorCount);
+        using var aiSemaphore = new SemaphoreSlim(aiConcurrency);
+        var aiCompleted = 0;
+        var aiTotal = photos.Count;
 
-            var photo = photos[i];
-            if (photo.ThumbnailData != null)
+        var aiTasks = photos.Select(async photo =>
+        {
+            if (IsCancelled) return;
+            await aiSemaphore.WaitAsync();
+            try
             {
-                photo.AiScore = await Task.Run(() => _aiScorer.Score(photo.ThumbnailData));
+                if (IsCancelled) return;
+                if (photo.ThumbnailData != null)
+                {
+                    photo.AiScore = await Task.Run(() => _aiScorer.Score(photo.ThumbnailData));
+                }
+                var done = Interlocked.Increment(ref aiCompleted);
+                System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+                    AiProgress = (double)done / aiTotal);
             }
-            AiProgress = (double)(i + 1) / photos.Count;
-        }
+            finally
+            {
+                aiSemaphore.Release();
+            }
+        });
+
+        await Task.WhenAll(aiTasks);
 
         if (IsCancelled) { await CleanupSession(db, session); return; }
 

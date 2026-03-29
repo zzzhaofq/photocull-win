@@ -22,12 +22,13 @@
     <PackageReference Include="OpenCvSharp4.runtime.win" Version="4.*" />
     <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="8.*" />
     <PackageReference Include="System.Configuration.ConfigurationManager" Version="8.*" />
+    <PackageReference Include="Magick.NET-Q8-AnyCPU" Version="14.*" />
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="libs\libraw.dll">
+    <Content Include="haarcascade_frontalface_default.xml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
+    </Content>
   </ItemGroup>
 
 </Project>

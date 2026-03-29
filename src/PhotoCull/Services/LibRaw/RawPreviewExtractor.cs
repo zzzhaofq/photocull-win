@@ -1,6 +1,5 @@
 using System.IO;
-using System.Runtime.InteropServices;
-using OpenCvSharp;
+using ImageMagick;
 
 namespace PhotoCull.Services.LibRaw;
 
@@ -30,129 +29,81 @@ public static class RawPreviewExtractor
         return AllSupportedExtensions.Contains(Path.GetExtension(path));
     }
 
+    /// <summary>
+    /// Extract a preview/thumbnail from a RAW or JPEG file.
+    /// Returns JPEG byte[] or null on failure.
+    /// </summary>
     public static byte[]? ExtractPreview(string filePath, int maxDimension = 1024)
     {
-        var ext = Path.GetExtension(filePath);
-        if (SupportedImageExtensions.Contains(ext))
+        try
         {
-            return LoadAndResizeJpeg(filePath, maxDimension);
-        }
+            var ext = Path.GetExtension(filePath);
+            if (SupportedImageExtensions.Contains(ext))
+            {
+                return LoadAndResizeWithMagick(filePath, maxDimension);
+            }
 
-        return ExtractRawPreview(filePath, maxDimension);
+            return ExtractRawPreview(filePath, maxDimension);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Load a high-resolution preview for the detail view (matches Mac 2560px behaviour).
+    /// </summary>
+    public static byte[]? LoadHighResPreview(string filePath, int maxDimension = 2560)
+    {
+        try
+        {
+            var ext = Path.GetExtension(filePath);
+            if (SupportedImageExtensions.Contains(ext))
+            {
+                return LoadAndResizeWithMagick(filePath, maxDimension);
+            }
+
+            // For RAW files: try embedded preview first, then full decode
+            return ExtractRawPreview(filePath, maxDimension);
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private static byte[]? ExtractRawPreview(string filePath, int maxDimension)
     {
-        IntPtr handle;
+        // Strategy 1: Try to extract embedded thumbnail/preview (fast)
         try
         {
-            handle = LibRawInterop.libraw_init(0);
-        }
-        catch (DllNotFoundException)
-        {
-            return null;
-        }
-        if (handle == IntPtr.Zero) return null;
+            using var image = new MagickImage();
+            // Read only the embedded thumbnail profile
+            var settings = new MagickReadSettings
+            {
+                ExtractArea = null // read full embedded preview
+            };
 
+            // Try reading the embedded preview using the dng:thumbnail define
+            image.Read(filePath, settings);
+
+            // Check if we got a valid image
+            if (image.Width > 0 && image.Height > 0)
+            {
+                return ResizeAndEncodeJpeg(image, maxDimension);
+            }
+        }
+        catch
+        {
+            // Fall through to strategy 2
+        }
+
+        // Strategy 2: Full decode + resize (slow but reliable)
         try
         {
-            if (LibRawInterop.libraw_open_file(handle, filePath) != 0)
-                return null;
-
-            // Try embedded thumbnail first
-            if (LibRawInterop.libraw_unpack_thumb(handle) == 0)
-            {
-                var thumbPtr = LibRawInterop.libraw_dcraw_make_mem_thumb(handle, out int thumbError);
-                if (thumbPtr != IntPtr.Zero && thumbError == 0)
-                {
-                    try
-                    {
-                        var thumbData = ExtractImageData(thumbPtr);
-                        if (thumbData != null)
-                        {
-                            var resized = ResizeJpegBytes(thumbData, maxDimension);
-                            return resized ?? thumbData;
-                        }
-                    }
-                    finally
-                    {
-                        LibRawInterop.libraw_dcraw_clear_mem(thumbPtr);
-                    }
-                }
-            }
-
-            // Fallback: full decode
-            LibRawInterop.libraw_recycle(handle);
-            if (LibRawInterop.libraw_open_file(handle, filePath) != 0)
-                return null;
-
-            if (LibRawInterop.libraw_unpack(handle) != 0)
-                return null;
-
-            if (LibRawInterop.libraw_dcraw_process(handle) != 0)
-                return null;
-
-            var imagePtr = LibRawInterop.libraw_dcraw_make_mem_image(handle, out int imgError);
-            if (imagePtr == IntPtr.Zero || imgError != 0)
-                return null;
-
-            try
-            {
-                var header = Marshal.PtrToStructure<LibRawInterop.LibrawProcessedImage>(imagePtr);
-                var dataOffset = Marshal.SizeOf<LibRawInterop.LibrawProcessedImage>();
-                var pixelData = new byte[header.DataSize];
-                Marshal.Copy(imagePtr + dataOffset, pixelData, 0, header.DataSize);
-
-                return EncodeRawPixelsAndResize(pixelData, header.Width, header.Height, header.Colors, maxDimension);
-            }
-            finally
-            {
-                LibRawInterop.libraw_dcraw_clear_mem(imagePtr);
-            }
-        }
-        finally
-        {
-            LibRawInterop.libraw_close(handle);
-        }
-    }
-
-    private static byte[]? ExtractImageData(IntPtr processedImagePtr)
-    {
-        var header = Marshal.PtrToStructure<LibRawInterop.LibrawProcessedImage>(processedImagePtr);
-        if (header.DataSize <= 0) return null;
-
-        var dataOffset = Marshal.SizeOf<LibRawInterop.LibrawProcessedImage>();
-        var data = new byte[header.DataSize];
-        Marshal.Copy(processedImagePtr + dataOffset, data, 0, header.DataSize);
-
-        // Type 1 = JPEG thumbnail
-        if (header.Type == 1)
-            return data;
-
-        // Type 2 = bitmap data, needs encoding
-        return EncodeRawPixelsAndResize(data, header.Width, header.Height, header.Colors, 1024);
-    }
-
-    private static byte[]? EncodeRawPixelsAndResize(byte[] pixelData, int width, int height, int colors, int maxDimension)
-    {
-        try
-        {
-            var matType = colors == 3 ? MatType.CV_8UC3 : MatType.CV_8UC4;
-            var handle = GCHandle.Alloc(pixelData, GCHandleType.Pinned);
-            try
-            {
-                using var mat = Mat.FromPixelData(height, width, matType, handle.AddrOfPinnedObject());
-
-                // LibRaw outputs RGB, OpenCV uses BGR
-                if (colors == 3)
-                    Cv2.CvtColor(mat, mat, ColorConversionCodes.RGB2BGR);
-
-                return ResizeAndEncode(mat, maxDimension);
-            }
-            finally
-            {
-                handle.Free();
-            }
+            using var image = new MagickImage(filePath);
+            return ResizeAndEncodeJpeg(image, maxDimension);
         }
         catch
         {
@@ -160,12 +111,12 @@ public static class RawPreviewExtractor
         }
     }
 
-    private static byte[]? LoadAndResizeJpeg(string filePath, int maxDimension)
+    private static byte[]? LoadAndResizeWithMagick(string filePath, int maxDimension)
     {
         try
         {
-            var bytes = File.ReadAllBytes(filePath);
-            return ResizeJpegBytes(bytes, maxDimension);
+            using var image = new MagickImage(filePath);
+            return ResizeAndEncodeJpeg(image, maxDimension);
         }
         catch
         {
@@ -173,35 +124,21 @@ public static class RawPreviewExtractor
         }
     }
 
-    private static byte[]? ResizeJpegBytes(byte[] jpegBytes, int maxDimension)
+    private static byte[] ResizeAndEncodeJpeg(MagickImage image, int maxDimension)
     {
-        try
+        var maxSide = Math.Max((int)image.Width, (int)image.Height);
+        if (maxSide > maxDimension)
         {
-            using var image = Cv2.ImDecode(jpegBytes, ImreadModes.Color);
-            if (image.Empty()) return jpegBytes;
-
-            return ResizeAndEncode(image, maxDimension);
-        }
-        catch
-        {
-            return jpegBytes;
-        }
-    }
-
-    private static byte[]? ResizeAndEncode(Mat image, int maxDimension)
-    {
-        var maxSide = Math.Max(image.Width, image.Height);
-        if (maxSide <= maxDimension)
-        {
-            Cv2.ImEncode(".jpg", image, out var buf, new[] { new ImageEncodingParam(ImwriteFlags.JpegQuality, 92) });
-            return buf;
+            var geometry = new MagickGeometry(maxDimension, maxDimension)
+            {
+                IgnoreAspectRatio = false
+            };
+            image.Resize(geometry);
         }
 
-        var scale = (double)maxDimension / maxSide;
-        using var resized = new Mat();
-        Cv2.Resize(image, resized, new Size(), scale, scale, InterpolationFlags.Area);
-        Cv2.ImEncode(".jpg", resized, out var encoded, new[] { new ImageEncodingParam(ImwriteFlags.JpegQuality, 92) });
-        return encoded;
+        image.Format = MagickFormat.Jpeg;
+        image.Quality = 92;
+        return image.ToByteArray();
     }
 
     public static async Task<Dictionary<string, byte[]?>> ExtractPreviewsAsync(
