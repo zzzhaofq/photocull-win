@@ -43,7 +43,15 @@ public static class RawPreviewExtractor
 
     private static byte[]? ExtractRawPreview(string filePath, int maxDimension)
     {
-        var handle = LibRawInterop.libraw_init(0);
+        IntPtr handle;
+        try
+        {
+            handle = LibRawInterop.libraw_init(0);
+        }
+        catch (DllNotFoundException)
+        {
+            return null;
+        }
         if (handle == IntPtr.Zero) return null;
 
         try
