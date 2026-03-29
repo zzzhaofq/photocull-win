@@ -129,7 +129,7 @@ public static class RawPreviewExtractor
         var maxSide = Math.Max((int)image.Width, (int)image.Height);
         if (maxSide > maxDimension)
         {
-            var geometry = new MagickGeometry(maxDimension, maxDimension)
+            var geometry = new MagickGeometry((uint)maxDimension, (uint)maxDimension)
             {
                 IgnoreAspectRatio = false
             };

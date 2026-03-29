@@ -38,7 +38,7 @@ public partial class PhotoDetailView : UserControl
         // Show thumbnail immediately
         try
         {
-            var thumbImage = ThumbnailCache.Shared.Thumbnail(photo.Id, photo.ThumbnailData);
+            var thumbImage = ThumbnailCache.Shared.Thumbnail(photo.Id.ToString(), photo.ThumbnailData);
             if (thumbImage != null)
             {
                 DetailImage.Source = thumbImage;
@@ -66,7 +66,7 @@ public partial class PhotoDetailView : UserControl
         // Async load 2560px hi-res preview
         var cts = new CancellationTokenSource();
         _hiResCts = cts;
-        var photoId = photo.Id;
+        var photoId = photo.Id.ToString();
         var filePath = photo.FilePath;
 
         _ = LoadHiResAsync(photoId, filePath, cts.Token);
@@ -123,9 +123,9 @@ public partial class PhotoDetailView : UserControl
             if (photo.FilePath == null) continue;
 
             // Skip if already cached
-            if (ThumbnailCache.Shared.GetHiRes(photo.Id) != null) continue;
+            if (ThumbnailCache.Shared.GetHiRes(photo.Id.ToString()) != null) continue;
 
-            var id = photo.Id;
+            var id = photo.Id.ToString();
             var path = photo.FilePath;
             _ = Task.Run(() =>
             {
