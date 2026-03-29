@@ -30,7 +30,7 @@ jobs:
         run: dotnet restore src/PhotoCull/PhotoCull.csproj
 
       - name: Run tests
-        run: dotnet test tests/PhotoCull.Tests/PhotoCull.Tests.csproj --verbosity normal
+        run: dotnet test tests/PhotoCull.Tests/PhotoCull.Tests.csproj --verbosity detailed --logger "console;verbosity=detailed"
 
       - name: Publish (self-contained, win-x64)
         run: >
