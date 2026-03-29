@@ -1,3 +1,4 @@
+using System.IO;
 using System.Windows.Media.Imaging;
 using Microsoft.Extensions.Caching.Memory;
 
