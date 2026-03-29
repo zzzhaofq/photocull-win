@@ -1,0 +1,25 @@
+<UserControl x:Class="PhotoCull.Views.PhotoDetailView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="#FF111111"
+             MouseWheel="OnMouseWheel"
+             MouseLeftButtonDown="OnMouseDown"
+             MouseLeftButtonUp="OnMouseUp"
+             MouseMove="OnMouseMove">
+    <Grid>
+        <Image x:Name="DetailImage" Stretch="Uniform" RenderTransformOrigin="0.5,0.5">
+            <Image.RenderTransform>
+                <TransformGroup>
+                    <ScaleTransform x:Name="ScaleXform" ScaleX="1" ScaleY="1"/>
+                    <TranslateTransform x:Name="TranslateXform"/>
+                </TransformGroup>
+            </Image.RenderTransform>
+        </Image>
+
+        <!-- Close button -->
+        <Button Content="✕" HorizontalAlignment="Right" VerticalAlignment="Top"
+                Margin="12" Padding="8,4" FontSize="16"
+                Background="#88000000" Foreground="White" BorderThickness="0"
+                Click="OnCloseClick" Cursor="Hand"/>
+    </Grid>
+</UserControl>

@@ -1,0 +1,138 @@
+<Window x:Class="PhotoCull.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:PhotoCull.Views"
+        xmlns:conv="clr-namespace:PhotoCull.Converters"
+        xmlns:models="clr-namespace:PhotoCull.Models"
+        Title="PhotoCull" Height="800" Width="1280"
+        WindowStartupLocation="CenterScreen"
+        Background="#FF1E1E1E" Foreground="#FFE0E0E0">
+
+    <Window.Resources>
+        <conv:BoolToVisibilityConverter x:Key="BoolToVis"/>
+        <conv:AppPhaseToIndexConverter x:Key="PhaseToIndex"/>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="180"/>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Sidebar -->
+        <Border Grid.Column="0" Background="#FF252525" BorderBrush="#FF333333" BorderThickness="0,0,1,0">
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Top" Text="PhotoCull" FontSize="18" FontWeight="Bold"
+                           Margin="16,16,16,8" Foreground="#FFFFFFFF"/>
+
+                <StackPanel DockPanel.Dock="Top" Margin="8,8,8,0">
+                    <Button Content="1. 导入" Margin="0,2" Click="OnPhaseClick" Tag="Import"
+                            Style="{StaticResource SidebarButton}"/>
+                    <Button Content="2. 快速筛选" Margin="0,2" Click="OnPhaseClick" Tag="QuickCull"
+                            Style="{StaticResource SidebarButton}"/>
+                    <Button Content="3. 组内精选" Margin="0,2" Click="OnPhaseClick" Tag="GroupPick"
+                            Style="{StaticResource SidebarButton}"/>
+                    <Button Content="4. 导出" Margin="0,2" Click="OnPhaseClick" Tag="Export"
+                            Style="{StaticResource SidebarButton}"/>
+                </StackPanel>
+
+                <!-- Rating Filter Panel -->
+                <StackPanel x:Name="RatingFilterPanel" DockPanel.Dock="Top" Margin="8,12,8,0" Visibility="Collapsed">
+                    <TextBlock Text="星标筛选" FontWeight="SemiBold" FontSize="11" Foreground="#FFAAAAAA" Margin="4,0,0,6"/>
+                    <Button x:Name="FilterAll" Click="OnRatingFilterClick" Tag="" Padding="6,4" Margin="0,1"
+                            Background="Transparent" Foreground="#FFE0E0E0" BorderThickness="0" Cursor="Hand"
+                            HorizontalContentAlignment="Stretch">
+                        <DockPanel>
+                            <TextBlock Text="📷" Width="20"/>
+                            <TextBlock Text="全部照片"/>
+                            <TextBlock x:Name="FilterAllCount" HorizontalAlignment="Right" Foreground="#FF888888" FontSize="11"/>
+                        </DockPanel>
+                    </Button>
+                    <Separator Background="#FF333333" Margin="4,4"/>
+                    <Button x:Name="FilterNoStar" Click="OnRatingFilterClick" Tag="0" Padding="6,4" Margin="0,1"
+                            Background="Transparent" Foreground="#FFE0E0E0" BorderThickness="0" Cursor="Hand"
+                            HorizontalContentAlignment="Stretch">
+                        <DockPanel>
+                            <TextBlock Text="☆" Width="20" Foreground="#FF888888"/>
+                            <TextBlock Text="无星标"/>
+                            <TextBlock x:Name="FilterNoStarCount" HorizontalAlignment="Right" Foreground="#FF888888" FontSize="11"/>
+                        </DockPanel>
+                    </Button>
+                    <Button x:Name="Filter1Star" Click="OnRatingFilterClick" Tag="1" Padding="6,4" Margin="0,1"
+                            Background="Transparent" Foreground="#FFE0E0E0" BorderThickness="0" Cursor="Hand"
+                            HorizontalContentAlignment="Stretch">
+                        <DockPanel>
+                            <TextBlock Text="★" Width="20" Foreground="#FFFFC107"/>
+                            <TextBlock Text="1 星"/>
+                            <TextBlock x:Name="Filter1StarCount" HorizontalAlignment="Right" Foreground="#FF888888" FontSize="11"/>
+                        </DockPanel>
+                    </Button>
+                    <Button x:Name="Filter2Star" Click="OnRatingFilterClick" Tag="2" Padding="6,4" Margin="0,1"
+                            Background="Transparent" Foreground="#FFE0E0E0" BorderThickness="0" Cursor="Hand"
+                            HorizontalContentAlignment="Stretch">
+                        <DockPanel>
+                            <TextBlock Text="★★" Width="20" Foreground="#FFFFC107" FontSize="9"/>
+                            <TextBlock Text="2 星"/>
+                            <TextBlock x:Name="Filter2StarCount" HorizontalAlignment="Right" Foreground="#FF888888" FontSize="11"/>
+                        </DockPanel>
+                    </Button>
+                    <Button x:Name="Filter3Star" Click="OnRatingFilterClick" Tag="3" Padding="6,4" Margin="0,1"
+                            Background="Transparent" Foreground="#FFE0E0E0" BorderThickness="0" Cursor="Hand"
+                            HorizontalContentAlignment="Stretch">
+                        <DockPanel>
+                            <TextBlock Text="★★★" Width="20" Foreground="#FFFFC107" FontSize="9"/>
+                            <TextBlock Text="3 星"/>
+                            <TextBlock x:Name="Filter3StarCount" HorizontalAlignment="Right" Foreground="#FF888888" FontSize="11"/>
+                        </DockPanel>
+                    </Button>
+                    <Button x:Name="Filter4Star" Click="OnRatingFilterClick" Tag="4" Padding="6,4" Margin="0,1"
+                            Background="Transparent" Foreground="#FFE0E0E0" BorderThickness="0" Cursor="Hand"
+                            HorizontalContentAlignment="Stretch">
+                        <DockPanel>
+                            <TextBlock Text="★★★★" Width="20" Foreground="#FFFFC107" FontSize="9"/>
+                            <TextBlock Text="4 星"/>
+                            <TextBlock x:Name="Filter4StarCount" HorizontalAlignment="Right" Foreground="#FF888888" FontSize="11"/>
+                        </DockPanel>
+                    </Button>
+                    <Button x:Name="Filter5Star" Click="OnRatingFilterClick" Tag="5" Padding="6,4" Margin="0,1"
+                            Background="Transparent" Foreground="#FFE0E0E0" BorderThickness="0" Cursor="Hand"
+                            HorizontalContentAlignment="Stretch">
+                        <DockPanel>
+                            <TextBlock Text="★★★★★" Width="20" Foreground="#FFFFC107" FontSize="9"/>
+                            <TextBlock Text="5 星"/>
+                            <TextBlock x:Name="Filter5StarCount" HorizontalAlignment="Right" Foreground="#FF888888" FontSize="11"/>
+                        </DockPanel>
+                    </Button>
+                </StackPanel>
+
+                <StackPanel DockPanel.Dock="Bottom" Margin="12,8">
+                    <TextBlock Text="统计" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                    <TextBlock x:Name="StatsTotal" Foreground="#FFAAAAAA" FontSize="11"/>
+                    <TextBlock x:Name="StatsRejected" Foreground="#FFAAAAAA" FontSize="11"/>
+                    <TextBlock x:Name="StatsSelected" Foreground="#FFAAAAAA" FontSize="11"/>
+                </StackPanel>
+
+                <StackPanel/> <!-- spacer -->
+            </DockPanel>
+        </Border>
+
+        <GridSplitter Grid.Column="1" Width="3" HorizontalAlignment="Center" VerticalAlignment="Stretch"
+                      Background="Transparent"/>
+
+        <!-- Main Content Area -->
+        <ContentControl Grid.Column="2" x:Name="MainContent"/>
+
+        <GridSplitter Grid.Column="3" Width="3" HorizontalAlignment="Center" VerticalAlignment="Stretch"
+                      Background="Transparent"
+                      Visibility="{Binding IsInspectorVisible, Converter={StaticResource BoolToVis}}"/>
+
+        <!-- Inspector Panel -->
+        <Border Grid.Column="4" Width="220" Background="#FF252525" BorderBrush="#FF333333" BorderThickness="1,0,0,0"
+                Visibility="{Binding IsInspectorVisible, Converter={StaticResource BoolToVis}}">
+            <local:InspectorPanel x:Name="Inspector"/>
+        </Border>
+    </Grid>
+</Window>

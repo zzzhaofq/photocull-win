@@ -1,0 +1,23 @@
+<UserControl x:Class="PhotoCull.Views.LicenseView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="#FF1E1E1E">
+    <Grid VerticalAlignment="Center" HorizontalAlignment="Center" Width="400">
+        <StackPanel>
+            <TextBlock Text="PhotoCull" FontSize="32" FontWeight="Bold" Foreground="White"
+                       HorizontalAlignment="Center" Margin="0,0,0,8"/>
+            <TextBlock Text="专业摄影师照片筛选工具" Foreground="#FFAAAAAA" FontSize="14"
+                       HorizontalAlignment="Center" Margin="0,0,0,32"/>
+
+            <TextBlock Text="请输入授权码" Foreground="#FFCCCCCC" Margin="0,0,0,8"/>
+            <TextBox x:Name="LicenseCodeBox" FontSize="14" Padding="8"
+                     Background="#FF2D2D2D" Foreground="White" BorderBrush="#FF444444"
+                     VerticalContentAlignment="Center"/>
+            <TextBlock x:Name="ErrorText" Foreground="#FFE53935" Margin="0,4,0,0" FontSize="12"
+                       Visibility="Collapsed"/>
+            <Button Content="激活" Margin="0,16,0,0" Padding="12,8" FontSize="14"
+                    Background="#FF4CAF50" Foreground="White" BorderThickness="0"
+                    Click="OnActivateClick" Cursor="Hand"/>
+        </StackPanel>
+    </Grid>
+</UserControl>

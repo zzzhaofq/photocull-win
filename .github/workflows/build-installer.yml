@@ -1,0 +1,81 @@
+name: Build Windows Installer
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        shell: bash
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Setup .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore src/PhotoCull/PhotoCull.csproj
+
+      - name: Run tests
+        run: dotnet test tests/PhotoCull.Tests/PhotoCull.Tests.csproj --verbosity normal
+
+      - name: Publish (self-contained, win-x64)
+        run: >
+          dotnet publish src/PhotoCull/PhotoCull.csproj
+          -c Release
+          -r win-x64
+          --self-contained
+          -p:PublishSingleFile=false
+          -o src/PhotoCull/bin/Release/net8.0-windows/win-x64/publish
+
+      - name: Verify libraw.dll in publish output
+        shell: pwsh
+        run: |
+          $dll = "src/PhotoCull/bin/Release/net8.0-windows/win-x64/publish/libs/libraw.dll"
+          if (Test-Path $dll) {
+            Write-Host "libraw.dll found at $dll"
+          } else {
+            Write-Host "libraw.dll not found at expected path, searching..."
+            $found = Get-ChildItem -Path "src/PhotoCull/bin/Release/net8.0-windows/win-x64/publish" -Filter "libraw.dll" -Recurse
+            if ($found) {
+              Write-Host "Found at: $($found.FullName)"
+            } else {
+              Write-Warning "libraw.dll not found in publish output. It should be included via the project's CopyToOutputDirectory setting."
+            }
+          }
+
+      - name: Install Inno Setup
+        run: choco install innosetup --yes --no-progress
+
+      - name: Build installer
+        shell: cmd
+        run: |
+          set APP_VERSION=${{ steps.version.outputs.VERSION }}
+          "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\PhotoCull.iss
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PhotoCull-Setup-${{ steps.version.outputs.VERSION }}
+          path: installer/Output/PhotoCull-Setup-*.exe
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: installer/Output/PhotoCull-Setup-*.exe
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
