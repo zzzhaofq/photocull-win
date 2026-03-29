@@ -1,11 +1,10 @@
-#define MyAppName "PhotoCull"
-#define MyAppVersion GetEnv('APP_VERSION')
-#if MyAppVersion == ""
+#ifndef MyAppVersion
   #define MyAppVersion "1.0.0"
 #endif
+#define MyAppName "PhotoCull"
 #define MyAppPublisher "PhotoCull"
 #define MyAppExeName "PhotoCull.exe"
-#define MyAppURL "https://github.com/photocull/photocull-win"
+#define MyAppURL "https://github.com/zzzhaofq/photocull-win"
 
 [Setup]
 AppId={{E8F3A1B2-5C7D-4E9F-B6A8-2D1C3E4F5A6B}
@@ -25,12 +24,10 @@ WizardStyle=modern
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 PrivilegesRequired=lowest
-SetupIconFile=
 UninstallDisplayIcon={app}\{#MyAppExeName}
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
-Name: "chinesesimplified"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked

@@ -65,10 +65,22 @@ jobs:
         run: choco install innosetup --yes --no-progress
 
       - name: Build installer
-        shell: cmd
+        shell: pwsh
+        env:
+          APP_VERSION: ${{ steps.version.outputs.VERSION }}
         run: |
-          set APP_VERSION=${{ steps.version.outputs.VERSION }}
-          "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\PhotoCull.iss
+          $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+            Write-Host "ISCC not at default path, searching..."
+            $iscc = (Get-Command iscc -ErrorAction SilentlyContinue).Source
+            if (-not $iscc) {
+              $iscc = (Get-ChildItem "C:\Program Files*\Inno Setup*\ISCC.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
+            }
+            Write-Host "Found ISCC at: $iscc"
+          }
+          Write-Host "Building installer version $env:APP_VERSION"
+          & $iscc /DMyAppVersion="$env:APP_VERSION" installer\PhotoCull.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
