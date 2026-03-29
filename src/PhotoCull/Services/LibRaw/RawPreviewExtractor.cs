@@ -1,3 +1,4 @@
+using System.IO;
 using System.Runtime.InteropServices;
 using OpenCvSharp;
 
@@ -129,13 +130,21 @@ public static class RawPreviewExtractor
         try
         {
             var matType = colors == 3 ? MatType.CV_8UC3 : MatType.CV_8UC4;
-            using var mat = new Mat(height, width, matType, pixelData);
+            var handle = GCHandle.Alloc(pixelData, GCHandleType.Pinned);
+            try
+            {
+                using var mat = new Mat(height, width, matType, handle.AddrOfPinnedObject());
 
-            // LibRaw outputs RGB, OpenCV uses BGR
-            if (colors == 3)
-                Cv2.CvtColor(mat, mat, ColorConversionCodes.RGB2BGR);
+                // LibRaw outputs RGB, OpenCV uses BGR
+                if (colors == 3)
+                    Cv2.CvtColor(mat, mat, ColorConversionCodes.RGB2BGR);
 
-            return ResizeAndEncode(mat, maxDimension);
+                return ResizeAndEncode(mat, maxDimension);
+            }
+            finally
+            {
+                handle.Free();
+            }
         }
         catch
         {
