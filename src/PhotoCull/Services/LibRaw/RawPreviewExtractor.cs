@@ -133,7 +133,7 @@ public static class RawPreviewExtractor
             var handle = GCHandle.Alloc(pixelData, GCHandleType.Pinned);
             try
             {
-                using var mat = new Mat(height, width, matType, handle.AddrOfPinnedObject());
+                using var mat = Mat.FromPixelData(height, width, matType, handle.AddrOfPinnedObject());
 
                 // LibRaw outputs RGB, OpenCV uses BGR
                 if (colors == 3)
