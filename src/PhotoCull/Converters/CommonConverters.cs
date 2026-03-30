@@ -48,6 +48,12 @@ public class ByteArrayToImageSourceConverter : IValueConverter
             image.BeginInit();
             image.CacheOption = BitmapCacheOption.OnLoad;
             image.StreamSource = ms;
+            // Decode at reduced size for thumbnails to save memory
+            // (full image data stays in Photo.ThumbnailData for when needed)
+            if (parameter is string sizeStr && int.TryParse(sizeStr, out var size))
+                image.DecodePixelWidth = size;
+            else
+                image.DecodePixelWidth = 400; // default thumbnail decode size
             image.EndInit();
             image.Freeze();
             return image;
@@ -64,13 +70,28 @@ public class ByteArrayToImageSourceConverter : IValueConverter
 
 public class CullStatusToColorConverter : IValueConverter
 {
+    // Cache frozen brushes to avoid allocating new ones on every binding update
+    private static readonly SolidColorBrush GreenBrush;
+    private static readonly SolidColorBrush RedBrush;
+    private static readonly SolidColorBrush GrayBrush;
+
+    static CullStatusToColorConverter()
+    {
+        GreenBrush = new SolidColorBrush(Color.FromRgb(76, 175, 80));
+        GreenBrush.Freeze();
+        RedBrush = new SolidColorBrush(Color.FromRgb(244, 67, 54));
+        RedBrush.Freeze();
+        GrayBrush = new SolidColorBrush(Color.FromRgb(158, 158, 158));
+        GrayBrush.Freeze();
+    }
+
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
     {
         return value switch
         {
-            CullStatus.Selected => new SolidColorBrush(Color.FromRgb(76, 175, 80)),   // Green
-            CullStatus.Rejected => new SolidColorBrush(Color.FromRgb(244, 67, 54)),   // Red
-            _ => new SolidColorBrush(Color.FromRgb(158, 158, 158))                     // Gray
+            CullStatus.Selected => GreenBrush,
+            CullStatus.Rejected => RedBrush,
+            _ => GrayBrush
         };
     }
 

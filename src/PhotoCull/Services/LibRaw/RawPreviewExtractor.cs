@@ -145,7 +145,8 @@ public static class RawPreviewExtractor
         IReadOnlyList<string> filePaths,
         int maxDimension = 1024,
         int concurrency = 8,
-        Action<int, int>? onProgress = null)
+        Action<int, int>? onProgress = null,
+        CancellationToken cancellationToken = default)
     {
         var results = new Dictionary<string, byte[]?>(filePaths.Count);
         using var semaphore = new SemaphoreSlim(concurrency);
@@ -155,10 +156,11 @@ public static class RawPreviewExtractor
 
         var tasks = filePaths.Select(async path =>
         {
-            await semaphore.WaitAsync();
+            await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
-                var data = await Task.Run(() => ExtractPreview(path, maxDimension));
+                cancellationToken.ThrowIfCancellationRequested();
+                var data = await Task.Run(() => ExtractPreview(path, maxDimension), cancellationToken).ConfigureAwait(false);
                 lock (lockObj)
                 {
                     results[path] = data;
@@ -172,7 +174,7 @@ public static class RawPreviewExtractor
             }
         });
 
-        await Task.WhenAll(tasks);
+        await Task.WhenAll(tasks).ConfigureAwait(false);
         return results;
     }
 }

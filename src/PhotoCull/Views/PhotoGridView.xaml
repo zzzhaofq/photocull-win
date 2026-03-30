@@ -9,42 +9,69 @@
         <conv:RatingToStarsConverter x:Key="StarConv"/>
     </UserControl.Resources>
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto" x:Name="ScrollHost"
-                  VirtualizingPanel.IsVirtualizing="True"
-                  VirtualizingPanel.VirtualizationMode="Recycling">
-        <ItemsControl x:Name="PhotoItems">
-            <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate>
-                    <WrapPanel x:Name="WrapHost"/>
-                </ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
-            <ItemsControl.ItemTemplate>
-                <DataTemplate>
-                    <Border x:Name="PhotoBorder" Margin="4" Padding="2"
-                            Background="#FF2D2D2D" CornerRadius="4"
-                            BorderThickness="2" BorderBrush="Transparent"
-                            MouseLeftButtonDown="OnPhotoClick"
-                            MouseRightButtonDown="OnPhotoRightClick"
-                            Tag="{Binding Id}">
-                        <StackPanel Width="{Binding ThumbnailWidth, RelativeSource={RelativeSource AncestorType=UserControl}}">
-                            <Image Source="{Binding ThumbnailData, Converter={StaticResource ImgConv}}"
-                                   Height="{Binding ThumbnailHeight, RelativeSource={RelativeSource AncestorType=UserControl}}" Stretch="Uniform"/>
-                            <Grid Margin="4,4,4,2">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Text="{Binding FileName}" FontSize="10" Foreground="#FFAAAAAA"
-                                           TextTrimming="CharacterEllipsis"/>
-                                <Ellipse Grid.Column="1" Width="8" Height="8" Margin="4,0,0,0"
-                                         Fill="{Binding Status, Converter={StaticResource StatusColor}}"/>
-                            </Grid>
-                            <TextBlock Text="{Binding Rating, Converter={StaticResource StarConv}}"
-                                       FontSize="10" Foreground="#FFFFC107" Margin="4,0,4,4"/>
-                        </StackPanel>
-                    </Border>
-                </DataTemplate>
-            </ItemsControl.ItemTemplate>
-        </ItemsControl>
-    </ScrollViewer>
+    <!-- Use ListBox with VirtualizingStackPanel for proper virtualization -->
+    <ListBox x:Name="PhotoItems"
+             Background="Transparent" BorderThickness="0"
+             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+             ScrollViewer.VerticalScrollBarVisibility="Auto"
+             VirtualizingPanel.IsVirtualizing="True"
+             VirtualizingPanel.VirtualizationMode="Recycling"
+             VirtualizingPanel.CacheLength="2,2"
+             VirtualizingPanel.CacheLengthUnit="Page"
+             VirtualizingPanel.ScrollUnit="Pixel"
+             SelectionMode="Extended"
+             SelectionChanged="OnSelectionChanged">
+        <ListBox.ItemsPanel>
+            <ItemsPanelTemplate>
+                <WrapPanel x:Name="WrapHost"
+                           ItemWidth="{Binding ThumbnailWidth, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                           IsItemsHost="True"/>
+            </ItemsPanelTemplate>
+        </ListBox.ItemsPanel>
+        <ListBox.ItemContainerStyle>
+            <Style TargetType="ListBoxItem">
+                <Setter Property="Padding" Value="0"/>
+                <Setter Property="Margin" Value="0"/>
+                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ListBoxItem">
+                            <ContentPresenter/>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+        </ListBox.ItemContainerStyle>
+        <ListBox.ItemTemplate>
+            <DataTemplate>
+                <Border x:Name="PhotoBorder" Margin="4" Padding="2"
+                        Background="#FF2D2D2D" CornerRadius="4"
+                        BorderThickness="2" BorderBrush="Transparent"
+                        MouseLeftButtonDown="OnPhotoClick"
+                        MouseRightButtonDown="OnPhotoRightClick"
+                        Tag="{Binding Id}">
+                    <StackPanel>
+                        <Image Source="{Binding ThumbnailData, Converter={StaticResource ImgConv}}"
+                               Height="{Binding ThumbnailHeight, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                               Stretch="Uniform"
+                               RenderOptions.BitmapScalingMode="LowQuality"/>
+                        <Grid Margin="4,4,4,2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="{Binding FileName}" FontSize="10" Foreground="#FFAAAAAA"
+                                       TextTrimming="CharacterEllipsis"/>
+                            <Ellipse Grid.Column="1" Width="8" Height="8" Margin="4,0,0,0"
+                                     Fill="{Binding Status, Converter={StaticResource StatusColor}}"/>
+                        </Grid>
+                        <TextBlock Text="{Binding Rating, Converter={StaticResource StarConv}}"
+                                   FontSize="10" Foreground="#FFFFC107" Margin="4,0,4,4"/>
+                    </StackPanel>
+                </Border>
+            </DataTemplate>
+        </ListBox.ItemTemplate>
+    </ListBox>
 </UserControl>

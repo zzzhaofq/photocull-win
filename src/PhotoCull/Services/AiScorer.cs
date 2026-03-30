@@ -23,17 +23,22 @@ public class AiScorer
     public AiScore Score(byte[] imageData)
     {
         Mat? image = null;
+        Mat? gray = null;
         try
         {
             image = Cv2.ImDecode(imageData, ImreadModes.Color);
             if (image.Empty())
                 return new AiScore { Overall = 50, Sharpness = 50, Exposure = 50, Composition = 50 };
 
-            var sharpness = MeasureSharpness(image);
-            var exposure = MeasureExposure(image);
+            // Pre-compute grayscale once and reuse across all measurements
+            gray = new Mat();
+            Cv2.CvtColor(image, gray, ColorConversionCodes.BGR2GRAY);
+
+            var sharpness = MeasureSharpness(gray);
+            var exposure = MeasureExposure(gray);
             var composition = 50.0;
 
-            var hasFace = DetectFaces(image, out var faceArea);
+            var hasFace = DetectFaces(gray, out var faceArea);
             double? faceQuality = null;
             double overall;
 
@@ -62,15 +67,13 @@ public class AiScorer
         }
         finally
         {
+            gray?.Dispose();
             image?.Dispose();
         }
     }
 
-    private static double MeasureSharpness(Mat image)
+    private static double MeasureSharpness(Mat gray)
     {
-        using var gray = new Mat();
-        Cv2.CvtColor(image, gray, ColorConversionCodes.BGR2GRAY);
-
         using var laplacian = new Mat();
         Cv2.Laplacian(gray, laplacian, MatType.CV_64F);
 
@@ -80,11 +83,8 @@ public class AiScorer
         return Math.Min(100, Math.Max(0, variance / 10.0));
     }
 
-    private static double MeasureExposure(Mat image)
+    private static double MeasureExposure(Mat gray)
     {
-        using var gray = new Mat();
-        Cv2.CvtColor(image, gray, ColorConversionCodes.BGR2GRAY);
-
         // Resize to max 256x256 for speed
         using var small = new Mat();
         if (gray.Width > 256 || gray.Height > 256)
@@ -128,14 +128,11 @@ public class AiScorer
         return Clamp(brightnessScore - clipPenalty);
     }
 
-    private static bool DetectFaces(Mat image, out Rect faceArea)
+    private static bool DetectFaces(Mat gray, out Rect faceArea)
     {
         faceArea = default;
         var classifier = FaceClassifier.Value;
         if (classifier.Empty()) return false;
-
-        using var gray = new Mat();
-        Cv2.CvtColor(image, gray, ColorConversionCodes.BGR2GRAY);
 
         var faces = classifier.DetectMultiScale(gray, 1.1, 3, HaarDetectionTypes.ScaleImage, new Size(30, 30));
         if (faces.Length > 0)

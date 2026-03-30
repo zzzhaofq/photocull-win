@@ -72,6 +72,7 @@ public sealed class ThumbnailCache
             image.BeginInit();
             image.CacheOption = BitmapCacheOption.OnLoad;
             image.StreamSource = ms;
+            image.DecodePixelWidth = 400; // Decode at reduced size for thumbnails
             image.EndInit();
             image.Freeze();
             SetImage(image, photoId);

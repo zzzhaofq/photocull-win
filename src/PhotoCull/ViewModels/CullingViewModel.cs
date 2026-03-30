@@ -33,8 +33,37 @@ public partial class CullingViewModel : ObservableObject
     public string RejectedTabName => "AI 建议淘汰";
     public string KeptTabName => "AI 建议保留";
 
-    public List<Photo> RejectedPhotos => PhotosForCull.Where(p => p.Status == CullStatus.Rejected).ToList();
-    public List<Photo> KeptPhotos => PhotosForCull.Where(p => p.Status != CullStatus.Rejected).ToList();
+    // Cached computed properties to avoid repeated LINQ on every access
+    private List<Photo>? _cachedRejectedPhotos;
+    private List<Photo>? _cachedKeptPhotos;
+    private List<PhotoGroup>? _cachedActiveGroups;
+    private bool _computedPropertiesDirty = true;
+
+    private void InvalidateComputedCaches()
+    {
+        _cachedRejectedPhotos = null;
+        _cachedKeptPhotos = null;
+        _cachedActiveGroups = null;
+        _computedPropertiesDirty = true;
+    }
+
+    public List<Photo> RejectedPhotos
+    {
+        get
+        {
+            _cachedRejectedPhotos ??= PhotosForCull.Where(p => p.Status == CullStatus.Rejected).ToList();
+            return _cachedRejectedPhotos;
+        }
+    }
+
+    public List<Photo> KeptPhotos
+    {
+        get
+        {
+            _cachedKeptPhotos ??= PhotosForCull.Where(p => p.Status != CullStatus.Rejected).ToList();
+            return _cachedKeptPhotos;
+        }
+    }
 
     public int StarredPhotoCount => RatingCounts[1] + RatingCounts[2] + RatingCounts[3] + RatingCounts[4] + RatingCounts[5];
     public int GroupPickTotalPhotos => KeptPhotos.Count;
@@ -44,8 +73,14 @@ public partial class CullingViewModel : ObservableObject
             ? PhotosForCull[CurrentPhotoIndex]
             : null;
 
-    public List<PhotoGroup> ActiveGroups =>
-        Groups.Where(g => g.Photos.Any(p => p.Status != CullStatus.Rejected)).ToList();
+    public List<PhotoGroup> ActiveGroups
+    {
+        get
+        {
+            _cachedActiveGroups ??= Groups.Where(g => g.Photos.Any(p => p.Status != CullStatus.Rejected)).ToList();
+            return _cachedActiveGroups;
+        }
+    }
 
     public PhotoGroup? CurrentGroup
     {
@@ -63,6 +98,9 @@ public partial class CullingViewModel : ObservableObject
 
     public void RecalcCounts()
     {
+        // Invalidate cached computed properties first
+        InvalidateComputedCaches();
+
         RejectedCount = PhotosForCull.Count(p => p.Status == CullStatus.Rejected);
         GroupPickSelectedCount = PhotosForCull.Count(p => p.Status == CullStatus.Selected);
         var counts = new int[6];
@@ -73,6 +111,8 @@ public partial class CullingViewModel : ObservableObject
         }
         RatingCounts = counts;
         UpdateSessionCounts();
+
+        // Batch notify all computed property changes at once
         OnPropertyChanged(nameof(RejectedPhotos));
         OnPropertyChanged(nameof(KeptPhotos));
         OnPropertyChanged(nameof(StarredPhotoCount));

@@ -63,6 +63,8 @@ public partial class ImportView : UserControl
     {
         ErrorText.Visibility = Visibility.Collapsed;
         using var db = new PhotoCullDbContext();
+        db.ApplyPerformancePragmas();
+        await db.Database.EnsureCreatedAsync();
         await _vm.ImportVm.ImportFolderAsync(folderPath, db);
 
         if (_vm.ImportVm.ErrorMessage != null)

@@ -34,12 +34,35 @@ public class PhotoCullDbContext : DbContext
         }
     }
 
+    /// <summary>
+    /// Apply SQLite performance pragmas (WAL mode, synchronous=NORMAL).
+    /// Call once after creating the context.
+    /// </summary>
+    public void ApplyPerformancePragmas()
+    {
+        var conn = Database.GetDbConnection();
+        conn.Open();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = """
+            PRAGMA journal_mode=WAL;
+            PRAGMA synchronous=NORMAL;
+            PRAGMA cache_size=-32000;
+            PRAGMA temp_store=MEMORY;
+            """;
+        cmd.ExecuteNonQuery();
+    }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         // Photo
         modelBuilder.Entity<Photo>(entity =>
         {
             entity.HasKey(e => e.Id);
+
+            // Performance indexes
+            entity.HasIndex(e => e.SessionId);
+            entity.HasIndex(e => e.GroupId);
+            entity.HasIndex(e => e.Status);
 
             entity.Property(e => e.Status)
                 .HasConversion<string>();
@@ -69,6 +92,9 @@ public class PhotoCullDbContext : DbContext
         modelBuilder.Entity<PhotoGroup>(entity =>
         {
             entity.HasKey(e => e.Id);
+
+            // Performance index
+            entity.HasIndex(e => e.SessionId);
 
             entity.Property(e => e.GroupType)
                 .HasConversion<string>();

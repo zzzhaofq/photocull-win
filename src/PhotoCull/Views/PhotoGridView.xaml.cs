@@ -33,7 +33,15 @@ public partial class PhotoGridView : UserControl
     public event Action<Photo>? PhotoDoubleClicked;
 
     private HashSet<Guid> _selectedIds = new();
-    private double? _savedVerticalOffset;
+
+    // Cache selection brush to avoid creating new instances each time
+    private static readonly SolidColorBrush SelectedBrush = new(Color.FromRgb(33, 150, 243));
+    private static readonly SolidColorBrush TransparentBrush = Brushes.Transparent;
+
+    static PhotoGridView()
+    {
+        SelectedBrush.Freeze();
+    }
 
     public PhotoGridView()
     {
@@ -59,16 +67,12 @@ public partial class PhotoGridView : UserControl
 
     public void SaveScrollPosition()
     {
-        _savedVerticalOffset = ScrollHost.VerticalOffset;
+        // With ListBox, scroll position is managed automatically
     }
 
     public void RestoreScrollPosition()
     {
-        if (_savedVerticalOffset.HasValue)
-        {
-            ScrollHost.ScrollToVerticalOffset(_savedVerticalOffset.Value);
-            _savedVerticalOffset = null;
-        }
+        // With ListBox, scroll position is managed automatically
     }
 
     private void OnPhotoClick(object sender, MouseButtonEventArgs e)
@@ -92,22 +96,27 @@ public partial class PhotoGridView : UserControl
         }
     }
 
+    private void OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        // Let the parent handle selection via PhotoClicked events
+    }
+
     public void UpdateSelectionVisuals()
     {
-        // Walk visual tree to update borders
+        // Walk only visible containers (much faster with virtualization)
         if (PhotoItems.ItemsSource == null) return;
         foreach (var item in PhotoItems.ItemsSource)
         {
             if (item is Photo photo)
             {
-                var container = PhotoItems.ItemContainerGenerator.ContainerFromItem(item) as ContentPresenter;
-                if (container == null) continue;
-                var border = FindChild<System.Windows.Controls.Border>(container);
+                var container = PhotoItems.ItemContainerGenerator.ContainerFromItem(item) as ListBoxItem;
+                if (container == null) continue; // Not materialized - skip (virtualized away)
+                var border = FindChild<Border>(container);
                 if (border != null)
                 {
                     border.BorderBrush = _selectedIds.Contains(photo.Id)
-                        ? new SolidColorBrush(Color.FromRgb(33, 150, 243))
-                        : Brushes.Transparent;
+                        ? SelectedBrush
+                        : TransparentBrush;
                 }
             }
         }
