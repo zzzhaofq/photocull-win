@@ -202,6 +202,8 @@ public class VirtualizingUniformGrid : VirtualizingPanel, IScrollInfo
     public void LineRight() { }
     public void PageUp() => SetVerticalOffset(_offset.Y - _viewport.Height);
     public void PageDown() => SetVerticalOffset(_offset.Y + _viewport.Height);
+    public void PageLeft() { }
+    public void PageRight() { }
     public void MouseWheelUp() => SetVerticalOffset(_offset.Y - ItemHeight);
     public void MouseWheelDown() => SetVerticalOffset(_offset.Y + ItemHeight);
     public void MouseWheelLeft() { }
