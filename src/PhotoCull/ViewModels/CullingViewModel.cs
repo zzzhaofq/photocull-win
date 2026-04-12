@@ -42,14 +42,12 @@ public partial class CullingViewModel : ObservableObject
     private List<Photo>? _cachedRejectedPhotos;
     private List<Photo>? _cachedKeptPhotos;
     private List<PhotoGroup>? _cachedActiveGroups;
-    private bool _computedPropertiesDirty = true;
 
     private void InvalidateComputedCaches()
     {
         _cachedRejectedPhotos = null;
         _cachedKeptPhotos = null;
         _cachedActiveGroups = null;
-        _computedPropertiesDirty = true;
     }
 
     public List<Photo> RejectedPhotos

@@ -1,3 +1,4 @@
+using System.IO;
 using PhotoCull.Models;
 using PhotoCull.Services.LibRaw;
 using PhotoCull.ViewModels;
