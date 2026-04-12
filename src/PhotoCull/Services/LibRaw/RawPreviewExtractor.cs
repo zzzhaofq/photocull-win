@@ -126,6 +126,9 @@ public static class RawPreviewExtractor
 
     private static byte[] ResizeAndEncodeJpeg(MagickImage image, int maxDimension)
     {
+        // Apply EXIF orientation to pixel data so portrait photos display correctly
+        image.AutoOrient();
+
         var maxSide = Math.Max((int)image.Width, (int)image.Height);
         if (maxSide > maxDimension)
         {
