@@ -93,6 +93,8 @@ public partial class MainViewModel : ObservableObject
     public async Task<List<CullingSession>> GetRecentSessionsAsync()
     {
         using var db = new PhotoCullDbContext();
+        db.ApplyPerformancePragmas();
+        // Use AsSplitQuery to avoid cartesian explosion with multiple includes
         return await db.CullingSessions
             .Where(s => !s.IsCompleted)
             .OrderByDescending(s => s.CreatedAt)
@@ -100,6 +102,7 @@ public partial class MainViewModel : ObservableObject
             .Include(s => s.Photos)
             .Include(s => s.Groups)
                 .ThenInclude(g => g.Photos)
+            .AsSplitQuery()
             .ToListAsync();
     }
 

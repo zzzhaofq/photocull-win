@@ -14,6 +14,14 @@ public partial class CompareView : UserControl
 
     private Guid? _selectedId;
 
+    private static readonly SolidColorBrush SelectedBrush;
+
+    static CompareView()
+    {
+        SelectedBrush = new SolidColorBrush(Color.FromRgb(76, 175, 80));
+        SelectedBrush.Freeze();
+    }
+
     public CompareView()
     {
         InitializeComponent();
@@ -57,7 +65,7 @@ public partial class CompareView : UserControl
                 if (border != null)
                 {
                     border.BorderBrush = photo.Id == _selectedId
-                        ? new SolidColorBrush(Color.FromRgb(76, 175, 80))
+                        ? SelectedBrush
                         : Brushes.Transparent;
                 }
             }

@@ -141,6 +141,16 @@ public partial class MainWindow : Window
         UpdateRatingFilterHighlight();
     }
 
+    // Cached brush for rating filter highlight
+    private static readonly System.Windows.Media.SolidColorBrush RatingHighlightBrush;
+
+    static MainWindow()
+    {
+        RatingHighlightBrush = new System.Windows.Media.SolidColorBrush(
+            System.Windows.Media.Color.FromArgb(38, 33, 150, 243));
+        RatingHighlightBrush.Freeze();
+    }
+
     private void UpdateRatingFilter()
     {
         if (RatingFilterPanel.Visibility != Visibility.Visible) return;
@@ -169,15 +179,13 @@ public partial class MainWindow : Window
 
     private void UpdateRatingFilterHighlight()
     {
-        var highlightBrush = new System.Windows.Media.SolidColorBrush(
-            System.Windows.Media.Color.FromArgb(38, 33, 150, 243)); // #2621 96F3
         var transparentBrush = System.Windows.Media.Brushes.Transparent;
 
         // Index mapping: 0=All(null), 1=NoStar(0), 2=1star, 3=2star, 4=3star, 5=4star, 6=5star
         for (int i = 0; i < _filterButtons.Length; i++)
         {
             int? buttonRating = i == 0 ? null : (i - 1);
-            _filterButtons[i].Background = _filterRating == buttonRating ? highlightBrush : transparentBrush;
+            _filterButtons[i].Background = _filterRating == buttonRating ? RatingHighlightBrush : transparentBrush;
         }
     }
 }

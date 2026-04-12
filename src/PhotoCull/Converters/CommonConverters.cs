@@ -38,22 +38,28 @@ public class NullToVisibilityConverter : IValueConverter
 
 public class ByteArrayToImageSourceConverter : IValueConverter
 {
+    /// <summary>
+    /// Converts byte[] to BitmapImage with DecodePixelWidth for memory savings.
+    /// For grid thumbnails, prefer using ThumbnailCache directly via code-behind.
+    /// This converter is used by CompareView and other non-grid contexts.
+    /// </summary>
     public object? Convert(object? value, Type targetType, object parameter, CultureInfo culture)
     {
         if (value is not byte[] bytes || bytes.Length == 0) return null;
         try
         {
+            // Use ThumbnailCache for deduplication when possible
+            // The cache key needs the Photo.Id, which isn't available in the converter.
+            // So we decode with reduced size and freeze.
             var image = new BitmapImage();
             using var ms = new System.IO.MemoryStream(bytes);
             image.BeginInit();
             image.CacheOption = BitmapCacheOption.OnLoad;
             image.StreamSource = ms;
-            // Decode at reduced size for thumbnails to save memory
-            // (full image data stays in Photo.ThumbnailData for when needed)
             if (parameter is string sizeStr && int.TryParse(sizeStr, out var size))
                 image.DecodePixelWidth = size;
             else
-                image.DecodePixelWidth = 400; // default thumbnail decode size
+                image.DecodePixelWidth = 400;
             image.EndInit();
             image.Freeze();
             return image;

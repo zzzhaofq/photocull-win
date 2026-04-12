@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using PhotoCull.Models;
 using PhotoCull.ViewModels;
 
@@ -10,6 +11,20 @@ public partial class QuickCullView : UserControl
 {
     private readonly MainViewModel _vm;
     private int? _filterRating;
+
+    // Cached brushes for tab visuals (avoid creating new ones on every update)
+    private static readonly SolidColorBrush TabActiveBrush = CreateFrozenBrush(62, 62, 62);
+    private static readonly SolidColorBrush TabInactiveBrush = CreateFrozenBrush(42, 42, 42);
+    private static readonly SolidColorBrush RedTextBrush = CreateFrozenBrush(244, 67, 54);
+    private static readonly SolidColorBrush GreenTextBrush = CreateFrozenBrush(76, 175, 80);
+    private static readonly SolidColorBrush GrayTextBrush = CreateFrozenBrush(170, 170, 170);
+
+    private static SolidColorBrush CreateFrozenBrush(byte r, byte g, byte b)
+    {
+        var brush = new SolidColorBrush(Color.FromRgb(r, g, b));
+        brush.Freeze();
+        return brush;
+    }
 
     public QuickCullView(MainViewModel vm)
     {
@@ -67,20 +82,14 @@ public partial class QuickCullView : UserControl
     private void UpdateTabVisuals()
     {
         var isRejected = _vm.CullingVm.ActiveTab == QuickCullTab.Rejected;
-        RejectedTab.Background = isRejected
-            ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(62, 62, 62))
-            : new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(42, 42, 42));
-        KeptTab.Background = !isRejected
-            ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(62, 62, 62))
-            : new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(42, 42, 42));
+        RejectedTab.Background = isRejected ? TabActiveBrush : TabInactiveBrush;
+        KeptTab.Background = !isRejected ? TabActiveBrush : TabInactiveBrush;
 
         RejectedTabText.Text = $"AI 建议淘汰 ({_vm.CullingVm.RejectedPhotos.Count})";
-        RejectedTabText.Foreground = new System.Windows.Media.SolidColorBrush(
-            isRejected ? System.Windows.Media.Color.FromRgb(244, 67, 54) : System.Windows.Media.Color.FromRgb(170, 170, 170));
+        RejectedTabText.Foreground = isRejected ? RedTextBrush : GrayTextBrush;
 
         KeptTabText.Text = $"AI 建议保留 ({_vm.CullingVm.KeptPhotos.Count})";
-        KeptTabText.Foreground = new System.Windows.Media.SolidColorBrush(
-            !isRejected ? System.Windows.Media.Color.FromRgb(76, 175, 80) : System.Windows.Media.Color.FromRgb(170, 170, 170));
+        KeptTabText.Foreground = !isRejected ? GreenTextBrush : GrayTextBrush;
     }
 
     private void UpdateDetailView()
@@ -88,7 +97,7 @@ public partial class QuickCullView : UserControl
         var cvm = _vm.CullingVm;
         if (cvm.IsZoomed && cvm.SelectedPhotoId.HasValue)
         {
-            var photo = cvm.PhotosForCull.FirstOrDefault(p => p.Id == cvm.SelectedPhotoId);
+            var photo = cvm.FindPhotoById(cvm.SelectedPhotoId.Value);
             Detail.SetPhoto(photo);
         }
     }
@@ -98,7 +107,7 @@ public partial class QuickCullView : UserControl
         var cvm = _vm.CullingVm;
         if (cvm.SelectedPhotoId.HasValue)
         {
-            _vm.InspectedPhoto = cvm.PhotosForCull.FirstOrDefault(p => p.Id == cvm.SelectedPhotoId);
+            _vm.InspectedPhoto = cvm.FindPhotoById(cvm.SelectedPhotoId.Value);
         }
     }
 
@@ -208,12 +217,13 @@ public partial class QuickCullView : UserControl
 
             case Key.Right:
                 cvm.MoveNext();
-                RefreshGrid();
+                // Don't call RefreshGrid for simple navigation - just update selection
+                UpdateNavigationSelection(cvm);
                 break;
 
             case Key.Left:
                 cvm.MovePrevious();
-                RefreshGrid();
+                UpdateNavigationSelection(cvm);
                 break;
 
             case Key.Home:
@@ -252,6 +262,19 @@ public partial class QuickCullView : UserControl
             default:
                 e.Handled = false;
                 break;
+        }
+    }
+
+    /// <summary>
+    /// Lightweight navigation update - only updates selection visual without rebuilding entire grid.
+    /// </summary>
+    private void UpdateNavigationSelection(CullingViewModel cvm)
+    {
+        if (cvm.SelectedPhotoId.HasValue)
+        {
+            cvm.SelectedPhotoIds.Clear();
+            cvm.SelectedPhotoIds.Add(cvm.SelectedPhotoId.Value);
+            Grid.SetSelectedIds(cvm.SelectedPhotoIds);
         }
     }
 

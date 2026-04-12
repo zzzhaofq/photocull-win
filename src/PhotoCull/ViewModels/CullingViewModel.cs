@@ -30,6 +30,11 @@ public partial class CullingViewModel : ObservableObject
 
     public UndoRedoManager UndoManager { get; } = new();
 
+    // Dictionary for O(1) photo lookups by Id
+    private Dictionary<Guid, Photo> _photoLookup = new();
+
+    public Photo? FindPhotoById(Guid id) => _photoLookup.GetValueOrDefault(id);
+
     public string RejectedTabName => "AI 建议淘汰";
     public string KeptTabName => "AI 建议保留";
 
@@ -101,14 +106,19 @@ public partial class CullingViewModel : ObservableObject
         // Invalidate cached computed properties first
         InvalidateComputedCaches();
 
-        RejectedCount = PhotosForCull.Count(p => p.Status == CullStatus.Rejected);
-        GroupPickSelectedCount = PhotosForCull.Count(p => p.Status == CullStatus.Selected);
+        // Single-pass count computation instead of 3 separate .Count() calls
+        int rejectedCount = 0;
+        int selectedCount = 0;
         var counts = new int[6];
         foreach (var photo in PhotosForCull)
         {
+            if (photo.Status == CullStatus.Rejected) rejectedCount++;
+            else if (photo.Status == CullStatus.Selected) selectedCount++;
             var r = Math.Max(0, Math.Min(5, photo.Rating));
             counts[r]++;
         }
+        RejectedCount = rejectedCount;
+        GroupPickSelectedCount = selectedCount;
         RatingCounts = counts;
         UpdateSessionCounts();
 
@@ -130,6 +140,8 @@ public partial class CullingViewModel : ObservableObject
         PhotosForCull = session.Photos
             .OrderBy(p => p.Exif.CaptureDate ?? DateTime.MinValue)
             .ToList();
+        // Build O(1) lookup dictionary
+        _photoLookup = PhotosForCull.ToDictionary(p => p.Id);
         Groups = session.Groups
             .OrderBy(g => g.Photos.FirstOrDefault()?.Exif.CaptureDate ?? DateTime.MinValue)
             .ToList();
@@ -208,7 +220,7 @@ public partial class CullingViewModel : ObservableObject
     public void SetRating(int rating, Guid photoId)
     {
         var clamped = Math.Max(0, Math.Min(5, rating));
-        var photo = PhotosForCull.FirstOrDefault(p => p.Id == photoId);
+        var photo = FindPhotoById(photoId);
         if (photo == null) return;
         var previous = photo.Rating;
         photo.Rating = clamped;
@@ -240,7 +252,7 @@ public partial class CullingViewModel : ObservableObject
 
     public void MoveToKept(Guid photoId)
     {
-        var photo = PhotosForCull.FirstOrDefault(p => p.Id == photoId);
+        var photo = FindPhotoById(photoId);
         if (photo == null || photo.Status != CullStatus.Rejected) return;
         var previous = photo.Status;
         photo.Status = CullStatus.Unreviewed;
@@ -252,7 +264,7 @@ public partial class CullingViewModel : ObservableObject
 
     public void MoveToRejected(Guid photoId)
     {
-        var photo = PhotosForCull.FirstOrDefault(p => p.Id == photoId);
+        var photo = FindPhotoById(photoId);
         if (photo == null || photo.Status == CullStatus.Rejected) return;
         var previous = photo.Status;
         photo.Status = CullStatus.Rejected;
@@ -265,7 +277,8 @@ public partial class CullingViewModel : ObservableObject
     // Batch operations
     public void BatchMoveToKept(IEnumerable<Guid> photoIds)
     {
-        var photos = PhotosForCull.Where(p => photoIds.Contains(p.Id) && p.Status == CullStatus.Rejected).ToList();
+        var idSet = photoIds is HashSet<Guid> hs ? hs : new HashSet<Guid>(photoIds);
+        var photos = PhotosForCull.Where(p => idSet.Contains(p.Id) && p.Status == CullStatus.Rejected).ToList();
         if (photos.Count == 0) return;
         var previousStates = photos.Select(p => (Photo: p, Previous: p.Status)).ToList();
         foreach (var p in photos) p.Status = CullStatus.Unreviewed;
@@ -277,7 +290,8 @@ public partial class CullingViewModel : ObservableObject
 
     public void BatchMoveToRejected(IEnumerable<Guid> photoIds)
     {
-        var photos = PhotosForCull.Where(p => photoIds.Contains(p.Id) && p.Status != CullStatus.Rejected).ToList();
+        var idSet = photoIds is HashSet<Guid> hs ? hs : new HashSet<Guid>(photoIds);
+        var photos = PhotosForCull.Where(p => idSet.Contains(p.Id) && p.Status != CullStatus.Rejected).ToList();
         if (photos.Count == 0) return;
         var previousStates = photos.Select(p => (Photo: p, Previous: p.Status)).ToList();
         foreach (var p in photos) p.Status = CullStatus.Rejected;
@@ -290,7 +304,8 @@ public partial class CullingViewModel : ObservableObject
     public void BatchSetRating(int rating, IEnumerable<Guid> photoIds)
     {
         var clamped = Math.Max(0, Math.Min(5, rating));
-        var photos = PhotosForCull.Where(p => photoIds.Contains(p.Id)).ToList();
+        var idSet = photoIds is HashSet<Guid> hs ? hs : new HashSet<Guid>(photoIds);
+        var photos = PhotosForCull.Where(p => idSet.Contains(p.Id)).ToList();
         if (photos.Count == 0) return;
         var previousRatings = photos.Select(p => (Photo: p, Previous: p.Rating)).ToList();
         var counts = RatingCounts.ToArray();

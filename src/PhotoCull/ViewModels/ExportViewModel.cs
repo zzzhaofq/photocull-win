@@ -25,16 +25,48 @@ public partial class ExportViewModel : ObservableObject
 
     private CullingSession? _session;
 
+    // Cached computed lists to avoid repeated LINQ scans
+    private List<Photo>? _cachedSelectedPhotos;
+    private List<Photo>? _cachedRejectedPhotos;
+    private List<Photo>? _cachedUnreviewedPhotos;
+    private int[]? _cachedRatingCounts;
+
+    private void InvalidateExportCaches()
+    {
+        _cachedSelectedPhotos = null;
+        _cachedRejectedPhotos = null;
+        _cachedUnreviewedPhotos = null;
+        _cachedRatingCounts = null;
+    }
+
     public CullingSession? Session => _session;
 
-    public List<Photo> SelectedPhotos =>
-        _session?.Photos.Where(p => p.Status == CullStatus.Selected).ToList() ?? new();
+    public List<Photo> SelectedPhotos
+    {
+        get
+        {
+            _cachedSelectedPhotos ??= _session?.Photos.Where(p => p.Status == CullStatus.Selected).ToList() ?? new();
+            return _cachedSelectedPhotos;
+        }
+    }
 
-    public List<Photo> RejectedPhotos =>
-        _session?.Photos.Where(p => p.Status == CullStatus.Rejected).ToList() ?? new();
+    public List<Photo> RejectedPhotos
+    {
+        get
+        {
+            _cachedRejectedPhotos ??= _session?.Photos.Where(p => p.Status == CullStatus.Rejected).ToList() ?? new();
+            return _cachedRejectedPhotos;
+        }
+    }
 
-    public List<Photo> UnreviewedPhotos =>
-        _session?.Photos.Where(p => p.Status == CullStatus.Unreviewed).ToList() ?? new();
+    public List<Photo> UnreviewedPhotos
+    {
+        get
+        {
+            _cachedUnreviewedPhotos ??= _session?.Photos.Where(p => p.Status == CullStatus.Unreviewed).ToList() ?? new();
+            return _cachedUnreviewedPhotos;
+        }
+    }
 
     public int TotalPhotos => _session?.TotalCount ?? 0;
 
@@ -52,22 +84,27 @@ public partial class ExportViewModel : ObservableObject
     {
         get
         {
-            var counts = new int[6];
-            foreach (var photo in SelectedPhotos)
+            if (_cachedRatingCounts == null)
             {
-                var r = Math.Max(0, Math.Min(5, photo.Rating));
-                counts[r]++;
+                var counts = new int[6];
+                foreach (var photo in SelectedPhotos)
+                {
+                    var r = Math.Max(0, Math.Min(5, photo.Rating));
+                    counts[r]++;
+                }
+                _cachedRatingCounts = counts;
             }
-            return counts;
+            return _cachedRatingCounts;
         }
     }
 
-    public void RejectPhoto(Photo photo) => photo.Status = CullStatus.Rejected;
-    public void RestorePhoto(Photo photo) => photo.Status = CullStatus.Selected;
+    public void RejectPhoto(Photo photo) { photo.Status = CullStatus.Rejected; InvalidateExportCaches(); }
+    public void RestorePhoto(Photo photo) { photo.Status = CullStatus.Selected; InvalidateExportCaches(); }
 
     public void LoadSession(CullingSession session)
     {
         _session = session;
+        InvalidateExportCaches();
         IsComplete = false;
         ErrorMessage = null;
         ExportProgress = 0;

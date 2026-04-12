@@ -6,12 +6,12 @@ namespace PhotoCull.Helpers;
 
 public sealed class ThumbnailCache
 {
-    public static ThumbnailCache Shared { get; } = new(500);
+    public static ThumbnailCache Shared { get; } = new(2000);
 
     private readonly MemoryCache _cache;
     private readonly MemoryCache _hiResCache;
 
-    public ThumbnailCache(int countLimit = 500)
+    public ThumbnailCache(int countLimit = 2000)
     {
         _cache = new MemoryCache(new MemoryCacheOptions
         {
@@ -19,7 +19,7 @@ public sealed class ThumbnailCache
         });
         _hiResCache = new MemoryCache(new MemoryCacheOptions
         {
-            SizeLimit = 30 // ~150MB for 30 hi-res images
+            SizeLimit = 50 // ~250MB for 50 hi-res images
         });
     }
 

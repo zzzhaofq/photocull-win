@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using PhotoCull.Models;
 using PhotoCull.ViewModels;
 
@@ -11,6 +12,17 @@ public partial class GroupPickView : UserControl
     private readonly MainViewModel _vm;
     private bool _isMergeMode;
     private int? _filterRating;
+
+    // Cached frozen brushes
+    private static readonly SolidColorBrush GreenBrush = CreateFrozenBrush(76, 175, 80);
+    private static readonly SolidColorBrush GrayBrush = CreateFrozenBrush(117, 117, 117);
+
+    private static SolidColorBrush CreateFrozenBrush(byte r, byte g, byte b)
+    {
+        var brush = new SolidColorBrush(Color.FromRgb(r, g, b));
+        brush.Freeze();
+        return brush;
+    }
 
     public GroupPickView(MainViewModel vm)
     {
@@ -387,11 +399,9 @@ public partial class GroupPickView : UserControl
     private void UpdateButtonStyles()
     {
         var hasManual = _vm.CullingVm.SelectedGroupPhotoIds.Count > 0;
-        AcceptBtn.Background = new System.Windows.Media.SolidColorBrush(
-            hasManual ? System.Windows.Media.Color.FromRgb(117, 117, 117) : System.Windows.Media.Color.FromRgb(76, 175, 80));
+        AcceptBtn.Background = hasManual ? GrayBrush : GreenBrush;
         AcceptBtn.Content = hasManual ? "接受推荐" : "接受推荐 (Enter)";
-        ConfirmBtn.Background = new System.Windows.Media.SolidColorBrush(
-            hasManual ? System.Windows.Media.Color.FromRgb(76, 175, 80) : System.Windows.Media.Color.FromRgb(117, 117, 117));
+        ConfirmBtn.Background = hasManual ? GreenBrush : GrayBrush;
         ConfirmBtn.Content = hasManual ? $"确认选择 ({_vm.CullingVm.SelectedGroupPhotoIds.Count}) (Enter)" : "确认选择";
         ConfirmBtn.IsEnabled = hasManual;
     }

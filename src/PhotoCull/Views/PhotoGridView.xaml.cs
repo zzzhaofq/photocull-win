@@ -2,19 +2,30 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using PhotoCull.Helpers;
 using PhotoCull.Models;
 
 namespace PhotoCull.Views;
 
 public partial class PhotoGridView : UserControl
 {
+    // ThumbnailWidth/Height = the Image display area; CellWidth/Height = including info bar + margins
     public static readonly DependencyProperty ThumbnailWidthProperty =
         DependencyProperty.Register(nameof(ThumbnailWidth), typeof(double), typeof(PhotoGridView),
-            new PropertyMetadata(300.0));
+            new PropertyMetadata(300.0, OnThumbnailSizeChanged));
 
     public static readonly DependencyProperty ThumbnailHeightProperty =
         DependencyProperty.Register(nameof(ThumbnailHeight), typeof(double), typeof(PhotoGridView),
-            new PropertyMetadata(225.0));
+            new PropertyMetadata(225.0, OnThumbnailSizeChanged));
+
+    public static readonly DependencyProperty ThumbnailCellWidthProperty =
+        DependencyProperty.Register(nameof(ThumbnailCellWidth), typeof(double), typeof(PhotoGridView),
+            new PropertyMetadata(308.0)); // width + margins
+
+    public static readonly DependencyProperty ThumbnailCellHeightProperty =
+        DependencyProperty.Register(nameof(ThumbnailCellHeight), typeof(double), typeof(PhotoGridView),
+            new PropertyMetadata(270.0)); // height + info bar + margins
 
     public double ThumbnailWidth
     {
@@ -28,13 +39,25 @@ public partial class PhotoGridView : UserControl
         set => SetValue(ThumbnailHeightProperty, value);
     }
 
+    public double ThumbnailCellWidth
+    {
+        get => (double)GetValue(ThumbnailCellWidthProperty);
+        set => SetValue(ThumbnailCellWidthProperty, value);
+    }
+
+    public double ThumbnailCellHeight
+    {
+        get => (double)GetValue(ThumbnailCellHeightProperty);
+        set => SetValue(ThumbnailCellHeightProperty, value);
+    }
+
     public event Action<Photo, MouseEventArgs>? PhotoClicked;
     public event Action<Photo, MouseButtonEventArgs>? PhotoRightClicked;
     public event Action<Photo>? PhotoDoubleClicked;
 
     private HashSet<Guid> _selectedIds = new();
 
-    // Cache selection brush to avoid creating new instances each time
+    // Cache selection brushes
     private static readonly SolidColorBrush SelectedBrush = new(Color.FromRgb(33, 150, 243));
     private static readonly SolidColorBrush TransparentBrush = Brushes.Transparent;
 
@@ -46,6 +69,15 @@ public partial class PhotoGridView : UserControl
     public PhotoGridView()
     {
         InitializeComponent();
+    }
+
+    private static void OnThumbnailSizeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is PhotoGridView grid)
+        {
+            grid.ThumbnailCellWidth = grid.ThumbnailWidth + 8; // 4px margin each side
+            grid.ThumbnailCellHeight = grid.ThumbnailHeight + 42; // info bar + margins
+        }
     }
 
     public void SetPhotos(IEnumerable<Photo> photos)
@@ -65,14 +97,25 @@ public partial class PhotoGridView : UserControl
         UpdateSelectionVisuals();
     }
 
-    public void SaveScrollPosition()
-    {
-        // With ListBox, scroll position is managed automatically
-    }
+    public void SaveScrollPosition() { /* managed by virtualizing panel */ }
+    public void RestoreScrollPosition() { /* managed by virtualizing panel */ }
 
-    public void RestoreScrollPosition()
+    /// <summary>
+    /// Called when a thumbnail Image element is loaded/recycled.
+    /// Uses ThumbnailCache to avoid repeated JPEG decoding.
+    /// </summary>
+    private void OnThumbImageLoaded(object sender, RoutedEventArgs e)
     {
-        // With ListBox, scroll position is managed automatically
+        if (sender is not Image img) return;
+        if (img.Tag is not Photo photo) return;
+
+        // Use ThumbnailCache for deduplication
+        var cached = ThumbnailCache.Shared.Thumbnail(photo.Id.ToString(), photo.ThumbnailData);
+        img.Source = cached;
+
+        // Set MaxHeight to ThumbnailHeight for consistent grid layout
+        img.MaxHeight = ThumbnailHeight;
+        img.MaxWidth = ThumbnailWidth;
     }
 
     private void OnPhotoClick(object sender, MouseButtonEventArgs e)
@@ -98,26 +141,25 @@ public partial class PhotoGridView : UserControl
 
     private void OnSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        // Let the parent handle selection via PhotoClicked events
+        // Parent handles selection via PhotoClicked events
     }
 
     public void UpdateSelectionVisuals()
     {
-        // Walk only visible containers (much faster with virtualization)
+        // Only walk materialized containers (much faster with virtualization)
         if (PhotoItems.ItemsSource == null) return;
-        foreach (var item in PhotoItems.ItemsSource)
+        for (int i = 0; i < PhotoItems.Items.Count; i++)
         {
-            if (item is Photo photo)
+            var container = PhotoItems.ItemContainerGenerator.ContainerFromIndex(i) as ListBoxItem;
+            if (container == null) continue; // Not materialized - virtualized away
+            var photo = PhotoItems.Items[i] as Photo;
+            if (photo == null) continue;
+            var border = FindChild<Border>(container);
+            if (border != null)
             {
-                var container = PhotoItems.ItemContainerGenerator.ContainerFromItem(item) as ListBoxItem;
-                if (container == null) continue; // Not materialized - skip (virtualized away)
-                var border = FindChild<Border>(container);
-                if (border != null)
-                {
-                    border.BorderBrush = _selectedIds.Contains(photo.Id)
-                        ? SelectedBrush
-                        : TransparentBrush;
-                }
+                border.BorderBrush = _selectedIds.Contains(photo.Id)
+                    ? SelectedBrush
+                    : TransparentBrush;
             }
         }
     }

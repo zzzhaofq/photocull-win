@@ -1,12 +1,24 @@
-using System.IO;
 using System.Windows.Controls;
-using System.Windows.Media.Imaging;
+using System.Windows.Media;
+using PhotoCull.Helpers;
 using PhotoCull.Models;
 
 namespace PhotoCull.Views;
 
 public partial class InspectorPanel : UserControl
 {
+    // Cached frozen brushes
+    private static readonly SolidColorBrush GreenBrush = CreateFrozenBrush(76, 175, 80);
+    private static readonly SolidColorBrush RedBrush = CreateFrozenBrush(244, 67, 54);
+    private static readonly SolidColorBrush GrayBrush = CreateFrozenBrush(158, 158, 158);
+
+    private static SolidColorBrush CreateFrozenBrush(byte r, byte g, byte b)
+    {
+        var brush = new SolidColorBrush(Color.FromRgb(r, g, b));
+        brush.Freeze();
+        return brush;
+    }
+
     public InspectorPanel()
     {
         InitializeComponent();
@@ -22,26 +34,8 @@ public partial class InspectorPanel : UserControl
 
         Root.Visibility = System.Windows.Visibility.Visible;
 
-        // Thumbnail
-        if (photo.ThumbnailData != null)
-        {
-            try
-            {
-                var image = new BitmapImage();
-                using var ms = new System.IO.MemoryStream(photo.ThumbnailData);
-                image.BeginInit();
-                image.CacheOption = BitmapCacheOption.OnLoad;
-                image.StreamSource = ms;
-                image.EndInit();
-                image.Freeze();
-                ThumbImage.Source = image;
-            }
-            catch { ThumbImage.Source = null; }
-        }
-        else
-        {
-            ThumbImage.Source = null;
-        }
+        // Use ThumbnailCache instead of creating new BitmapImage every time
+        ThumbImage.Source = ThumbnailCache.Shared.Thumbnail(photo.Id.ToString(), photo.ThumbnailData);
 
         // File info
         FileNameText.Text = photo.FileName;
@@ -76,7 +70,7 @@ public partial class InspectorPanel : UserControl
             FaceText.Text = "人脸: -";
         }
 
-        // Status
+        // Status - use cached brushes
         StatusText.Text = photo.Status switch
         {
             CullStatus.Selected => "已选",
@@ -85,9 +79,9 @@ public partial class InspectorPanel : UserControl
         };
         StatusText.Foreground = photo.Status switch
         {
-            CullStatus.Selected => new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(76, 175, 80)),
-            CullStatus.Rejected => new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(244, 67, 54)),
-            _ => new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(158, 158, 158))
+            CullStatus.Selected => GreenBrush,
+            CullStatus.Rejected => RedBrush,
+            _ => GrayBrush
         };
 
         var stars = photo.Rating > 0 ? new string('★', photo.Rating) + new string('☆', 5 - photo.Rating) : "☆☆☆☆☆";
